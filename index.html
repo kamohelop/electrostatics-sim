@@ -1,7 +1,177 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1D Electrostatics Simulation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; color: #333; }
+        h2 { text-align: center; }
+        .container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        canvas { background: #ffffff; border: 2px solid #333; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .controls { background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 320px; width: 100%; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; }
+        .results { margin-top: 15px; padding: 10px; background: #eef2f7; border-left: 4px solid #007bff; border-radius: 4px; }
+    </style>
+</head>
 <body>
-  <h1>Electrostatics Simulation</h1>
-  <p>Simulation loading...</p>
+
+<h2>1D Electrostatics: Coulomb's Law Simulation</h2>
+
+<div class="container">
+    <canvas id="simCanvas" width="600" height="400"></canvas>
+
+    <div class="controls">
+        <h3>Lesson Variables</h3>
+        
+        <div class="control-group">
+            <label for="q1">Charge Q1: <span id="q1-val">2</span> µC</label>
+            <input type="range" id="q1" min="-10" max="10" value="2" step="1">
+        </div>
+
+        <div class="control-group">
+            <label for="q2">Charge Q2: <span id="q2-val">-4</span> µC</label>
+            <input type="range" id="q2" min="-10" max="10" value="-4" step="1">
+        </div>
+
+        <div class="control-group">
+            <label for="r">Separation Distance (r): <span id="r-val">0.30</span> m</label>
+            <input type="range" id="r" min="0.05" max="0.80" value="0.30" step="0.01">
+        </div>
+
+        <div class="results">
+            <h4>Live Calculations:</h4>
+            <p><b>Scientific Notation:</b></p>
+            <p>q₁ = <span id="q1-sci">2.0 × 10⁻⁶</span> C</p>
+            <p>q₂ = <span id="q2-sci">-4.0 × 10⁻⁶</span> C</p>
+            <p><b>Electrostatic Force (F):</b> <span id="force-val">0.80</span> N</p>
+            <p><b>Interaction:</b> <span id="type-val">Attract</span></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const k = 8.99e9;
+
+    const q1Input = document.getElementById('q1');
+    const q2Input = document.getElementById('q2');
+    const rInput = document.getElementById('r');
+
+    function drawArrow(fromX, fromY, toX, toY, color, label) {
+        if (Math.abs(toX - fromX) < 5) return;
+        const headlen = 8;
+        const angle = Math.atan2(toY - fromY, toX - fromX);
+        
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(toX, toY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(toX, toY);
+        ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.lineTo(toX, toY);
+        ctx.fill();
+
+        if (label) {
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(label, (fromX + toX) / 2, fromY - 12);
+        }
+    }
+
+    function updateSimulation() {
+        const q1Val = parseFloat(q1Input.value);
+        const q2Val = parseFloat(q2Input.value);
+        const rVal = parseFloat(rInput.value);
+
+        const q1 = q1Val * 1e-6;
+        const q2 = q2Val * 1e-6;
+
+        document.getElementById('q1-val').textContent = q1Val;
+        document.getElementById('q2-val').textContent = q2Val;
+        document.getElementById('r-val').textContent = rVal.toFixed(2);
+
+        document.getElementById('q1-sci').textContent = `${q1Val} × 10⁻⁶`;
+        document.getElementById('q2-sci').textContent = `${q2Val} × 10⁻⁶`;
+
+        const force = (k * Math.abs(q1 * q2)) / (rVal * rVal);
+        const isAttraction = (q1Val * q2Val) < 0;
+
+        document.getElementById('force-val').textContent = force.toFixed(2);
+        document.getElementById('type-val').textContent = isAttraction ? 'Attraction' : (q1Val === 0 || q2Val === 0 ? 'None' : 'Repulsion');
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const centerY = 200;
+        const centerX = canvas.width / 2;
+        const pixelScale = 400;
+        
+        const q1X = centerX - (rVal * pixelScale) / 2;
+        const q2X = centerX + (rVal * pixelScale) / 2;
+
+        ctx.strokeStyle = '#888';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(q1X, centerY + 40);
+        ctx.lineTo(q2X, centerY + 40);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`r = ${rVal.toFixed(2)} m`, centerX, centerY + 55);
+
+        const forceArrowScale = Math.min(Math.max(force * 30, 15), 120);
+        if (q1Val !== 0 && q2Val !== 0) {
+            if (isAttraction) {
+                drawArrow(q1X, centerY, q1X + forceArrowScale, centerY, '#e74c3c', `F = ${force.toFixed(2)} N`);
+                drawArrow(q2X, centerY, q2X - forceArrowScale, centerY, '#e74c3c', `F = ${force.toFixed(2)} N`);
+            } else {
+                drawArrow(q1X, centerY, q1X - forceArrowScale, centerY, '#2ecc71', `F = ${force.toFixed(2)} N`);
+                drawArrow(q2X, centerY, q2X + forceArrowScale, centerY, '#2ecc71', `F = ${force.toFixed(2)} N`);
+            }
+        }
+
+        drawSphere(q1X, centerY, q1Val, 'Q1');
+        drawSphere(q2X, centerY, q2Val, 'Q2');
+    }
+
+    function drawSphere(x, y, value, name) {
+        ctx.beginPath();
+        ctx.arc(x, y, 22, 0, 2 * Math.PI);
+        ctx.fillStyle = value > 0 ? '#ff4d4d' : (value < 0 ? '#4d79ff' : '#aaaaaa');
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#333';
+        ctx.stroke();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((value > 0 ? '+' : '') + value + 'µC', x, y);
+
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 13px Arial';
+        ctx.fillText(name, x, y - 32);
+    }
+
+    [q1Input, q2Input, rInput].forEach(input => {
+        input.addEventListener('input', updateSimulation);
+    });
+
+    updateSimulation();
+</script>
+
 </body>
 </html>
